@@ -9,7 +9,7 @@ import { Skybox } from "./programs/skybox.js";
 import { SSRTGlass } from "./programs/ssrtGlass.js";
 // import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js';
 // import * as dat   from "../node_modules/dat.gui/build/dat.gui.module.js";
-import * as dat from "../../lib/dat.gui.module.js"
+import * as dat from "./dat.gui.module.js"
 // window.addEventListener("load", init);
 
 let scene; 
