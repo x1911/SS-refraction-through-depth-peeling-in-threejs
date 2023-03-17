@@ -1,4 +1,4 @@
-import * as THREE from "../node_modules/three/build/three.module.js";
+// import * as THREE from "../node_modules/three/build/three.module.js";
 
 class Skybox {
     constructor(texture, camera, renderer, args) {
@@ -40,7 +40,7 @@ class Skybox {
             depthWrite: false,
         });
 
-        this.mesh     = new THREE.Mesh(new THREE.BoxBufferGeometry(10,10,10), this.material);
+        this.mesh     = new THREE.Mesh(new THREE.BoxGeometry(10,10,10), this.material);
         this.camera   = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 100 );
         this.mainCamera = camera;
         this.renderer = renderer;

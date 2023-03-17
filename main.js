@@ -1,26 +1,35 @@
-import * as THREE from "./node_modules/three/build/three.module.js";
-import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js"; //'three/examples/jsm/controls/OrbitControls.js';
+// import * as THREE from "./node_modules/three/build/three.module.js";
+// import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js"; //'three/examples/jsm/controls/OrbitControls.js';
+// import * as THREE from "../../lib/Three.min.js";
+// window.THREE = THREE.default
+const { OrbitControls, GLTFLoader } = THREE
 import { DoubleDepthBuffer } from "./programs/doubleDepthBuffer.js";
 import { Blit } from "./programs/blit.js";
 import { Skybox } from "./programs/skybox.js";
 import { SSRTGlass } from "./programs/ssrtGlass.js";
-import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js';
-import * as dat   from "../node_modules/dat.gui/build/dat.gui.module.js";
-
-window.addEventListener("load", init);
+// import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js';
+// import * as dat   from "../node_modules/dat.gui/build/dat.gui.module.js";
+import * as dat from "../../lib/dat.gui.module.js"
+// window.addEventListener("load", init);
 
 let scene; 
 let camera;
 let controls;
 let renderer;
 
-
+/** @type {DoubleDepthBuffer} */
 let ddbProgram;
 let blitProgram;
 let skyboxProgram;
+/** @type {SSRTGlass} */
 let ssrtGlassProgram;
 
 let dlCount = 0;
+
+init()
+
+
+
 
 
 function init() {
@@ -89,7 +98,8 @@ function init() {
             mesh = gltf.scene.children[0];
             mesh.position.set(0,0,0);
             // mesh.rotation.x = Math.PI * 0.5;
-            mesh.scale.set(2, 2, 2);
+            const s = 2
+            mesh.scale.set(s, s, s);
             // necessary since the mesh by default is rotated
             mesh.rotation.set(0,0,0);
 
@@ -140,6 +150,7 @@ function init() {
         ssrtGlassProgram = new SSRTGlass(mesh, radbox, camera, renderer);
     
         initGUI();
+        // initSet()
         animate();
     }
 }
@@ -154,6 +165,26 @@ function animate(now) {
     skyboxProgram.render();
     ddbProgram.compute(6);
     ssrtGlassProgram.render(now, ddbProgram.getBackFaceTexture(), ddbProgram.getFrontFaceTexture());
+}
+
+
+function initSet(){
+    const u = ssrtGlassProgram.material.uniforms
+    u.uExtintionFactor.value = 5;
+    u.uReflectionFactor.value = 2;
+    u.uExposure.value = 0.5;
+
+    u.uExtintionColor1.value.x = (1 - 192 / 255);
+    u.uExtintionColor1.value.y = (1 - 123 / 255);
+    u.uExtintionColor1.value.z = (1 - 25 / 255);
+    u.uExtintionColor2.value.x = (1 - 26 / 255);
+    u.uExtintionColor2.value.y = (1 - 166 / 255);
+    u.uExtintionColor2.value.z = (1 - 192 / 255);
+    
+    u.uExtinctionFX1.value.x = 0;
+    u.uExtinctionFX1.value.y = 0;
+    u.uExtinctionFX1.value.z = 0;
+    u.uExtinctionFX1.value.w = 1.0;
 }
 
 
@@ -181,8 +212,9 @@ function initGUI() {
         };
     };
     
+    
+    
     var text = new FizzyText();
-
     var gui = new dat.GUI();
     gui.add(text, 'extintionFactor', 0, 10).onChange((value) => {
         ssrtGlassProgram.material.uniforms.uExtintionFactor.value = value;
@@ -197,11 +229,15 @@ function initGUI() {
         ssrtGlassProgram.material.uniforms.uExtintionColor1.value.x = (1 - value[0] / 255);
         ssrtGlassProgram.material.uniforms.uExtintionColor1.value.y = (1 - value[1] / 255);
         ssrtGlassProgram.material.uniforms.uExtintionColor1.value.z = (1 - value[2] / 255);
+    
+        // ssrtGlassProgram.material.uniforms.uExtintionColor1.value.set( value[0]/255, value[1]/255, value[2]/255 )
+        
     });
     gui.addColor(text, 'extintionColor2').onChange((value) => {
         ssrtGlassProgram.material.uniforms.uExtintionColor2.value.x = (1 - value[0] / 255);
         ssrtGlassProgram.material.uniforms.uExtintionColor2.value.y = (1 - value[1] / 255);
         ssrtGlassProgram.material.uniforms.uExtintionColor2.value.z = (1 - value[2] / 255);
+        // ssrtGlassProgram.material.uniforms.uExtintionColor2.value.set( value[0]/255, value[1]/255, value[2]/255 )
     });
     gui.add(text, 'copy');
     gui.add(text, 'uncopy');
@@ -219,4 +255,5 @@ function initGUI() {
         ssrtGlassProgram.material.uniforms.uExtinctionFX1.value.w = value;
     });
     fx.open();
+    
 }

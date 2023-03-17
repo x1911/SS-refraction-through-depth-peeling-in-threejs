@@ -1,4 +1,5 @@
-import * as THREE from "../node_modules/three/build/three.module.js";
+// import * as THREE from "../node_modules/three/build/three.module.js";
+// import * as THREE from "../../../lib/Three.min.js"
 import { Blit } from "../programs/blit.js";
 
 
@@ -19,16 +20,19 @@ class DoubleDepthBuffer {
             depthBuffer:   false,
             stencilBuffer: false,
         });
-
+        // this.ping.texture.minFilter = this.ping.texture.magFilter = THREE.NearestFilter
+        
         this.pong = new THREE.WebGLRenderTarget(innerWidth, innerHeight, {
             type:          THREE.FloatType,
             depthBuffer:   false,
             stencilBuffer: false,
         });
-
+        // this.pong.texture.minFilter = this.pong.texture.magFilter = THREE.NearestFilter
+        
         this.frontFaceRT = new THREE.WebGLRenderTarget(innerWidth, innerHeight, {
-            type:          THREE.FloatType,
+            type: THREE.FloatType,
         });
+        // this.frontFaceRT.texture.minFilter = this.frontFaceRT.texture.magFilter = THREE.NearestFilter
 
         this.frontFaceMaterial = new THREE.ShaderMaterial({
             uniforms: {

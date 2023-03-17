@@ -1,4 +1,4 @@
-import * as THREE from "../node_modules/three/build/three.module.js";
+// import * as THREE from "../node_modules/three/build/three.module.js";
 
 class SSRTGlass {
     constructor(mesh, skybox, camera, renderer) {
@@ -15,10 +15,10 @@ class SSRTGlass {
 
                 uTime:             { value: 0 },
 
-                // uExtintionColor1:  { value: new THREE.Vector3(0.25, 0.7,  0.9)  },
-                uExtintionColor1:  { value: new THREE.Vector3(1 - 192/255, 1 - 123/255, 1 - 25/255)  },
+                uExtintionColor1:  { value: new THREE.Vector3(0.25, 0.7,  0.9)  },
+                // uExtintionColor1:  { value: new THREE.Vector3(1 - 192/255, 1 - 123/255, 1 - 25/255)  },
                 uExtintionColor2:  { value: new THREE.Vector3(0.9,  0.35, 0.25) },
-                uExtintionFactor:  { value: 5 },
+                uExtintionFactor:  { type: "f", value: 5 },
                 uExposure:         { value: 0 },
                 uReflectionFactor: { value: 1 },
                 uExtinctionFX1:    { value: new THREE.Vector4(0, 0, 0, 1) },
@@ -120,18 +120,29 @@ class SSRTGlass {
                     return col;
                 }
 
-                bool refract2(vec3 v, vec3 n, float ni_over_nt, inout vec3 refracted) {
+                // bool refract2(vec3 v, vec3 n, float ni_over_nt, inout vec3 refracted) {
+                //     vec3 uv = normalize(v);
+                //     float dt = dot(uv, n);
+                //     float discriminant = 1.0 - ni_over_nt * ni_over_nt * (1.0 - dt*dt);
+                //     if (discriminant > 0.0) {
+                //         refracted = ni_over_nt * (v - n * dt) - n * sqrt(discriminant);
+                //         return true;
+                //     }
+                
+                //     return false;
+                // }
+
+                bool refract2(vec3 v, vec3 n, float ni_over_nt, inout vec3 refrac) {
                     vec3 uv = normalize(v);
                     float dt = dot(uv, n);
                     float discriminant = 1.0 - ni_over_nt * ni_over_nt * (1.0 - dt*dt);
                     if (discriminant > 0.0) {
-                        refracted = ni_over_nt * (v - n * dt) - n * sqrt(discriminant);
+                        refrac = ni_over_nt * (v - n * dt) - n * sqrt(discriminant);
                         return true;
                     }
                 
                     return false;
                 }
-
 
 
                 vec3 binarySearchHitPoint(vec3 lastP, vec3 hitP, vec3 rayDir) {
@@ -162,7 +173,7 @@ class SSRTGlass {
                 }
 
 
-
+                // getRefractedColor functions start
                 vec3 getRefractedColor(vec3 refractionDir, vec3 hitPoint, float refractionIndex) {
                     // move the hitpoint inside the mesh with epsilon
                     hitPoint += refractionDir * 0.0001;
@@ -233,7 +244,8 @@ class SSRTGlass {
                     vec3 outward_normal;
                     vec3 reflected = reflect(refractionDir, hitPNormal);
                     float ni_over_nt;
-                    vec3 refracted;
+                    vec3 refr;
+                    // vec3 refracted;
                     float reflect_prob;
                     float cosine;
                 
@@ -248,7 +260,8 @@ class SSRTGlass {
                     }
 
                 
-                    if (refract2(refractionDir, outward_normal, ni_over_nt, refracted)) {
+                    // if (refract2(refractionDir, outward_normal, ni_over_nt, refracted)) {
+                    if (refract2(refractionDir, outward_normal, ni_over_nt, refr)) {
                         float r0 = (1.0 - refractionIndex) / (1.0 + refractionIndex);
                         r0 *= r0;
                         reflect_prob = r0 + (1.0 - r0) * pow((1.0 - cosine), 5.0);
@@ -262,17 +275,24 @@ class SSRTGlass {
                     vec3 col;
                     vec3 colrefl;
                     vec3 colrefr;
-                    if(refracted.y < 0.0) {
-                        float t = p.y / abs(refracted.y);
-                        vec3 planeHitP = p + refracted * t;
+                    // if(refracted.y < 0.0) {
+                    if(refr.y < 0.0) {
+                        // float t = p.y / abs(refracted.y);
+                        // vec3 planeHitP = p + refracted * t;
+                        float t = p.y / abs(refr.y);
+                        vec3 planeHitP = p + refr * t;
                         if(abs(planeHitP.x) < planeSize && abs(planeHitP.z) < planeSize) {
                             colrefr = planeColor;
                         } else {
-                            colrefr = getSkyboxColor(refracted);
+                            // colrefr = getSkyboxColor(refracted);
+                            colrefr = getSkyboxColor(refr);
                         }
                     } else {
-                        colrefr = getSkyboxColor(refracted);
+                        // colrefr = getSkyboxColor(refracted);
+                        colrefr = getSkyboxColor(refr);
                     }
+
+                    // return colrefr;  // get glass effect
 
                     if(reflected.y < 0.0) {
                         float t = p.y / abs(reflected.y);
@@ -289,20 +309,26 @@ class SSRTGlass {
                     col = colrefl * (reflect_prob * uReflectionFactor) + colrefr * (1.0 - reflect_prob);
                     // ******************** get colors 
 
+                    // return col;  // glass effect + color
 
 
 
                     vec3 transm = vec3(1.0);
+                    // const int steps = 8;
                     const int steps = 15;
                     float step = transmissionDistance / float(steps);
+                    float fc = uExtintionFactor * 0.07;
+
                     // raymarching transmission color
+
+                    // float noiseStrength = 0.8;
+                    float noiseSpeed = 0.5;
+                    float noiseTimeSpeed = 0.5;
+
+
                     for(int i = 0; i < steps; i++) {
                         vec3 np = hitPoint + refractionDir * float(i) * step;
-
-                        float noiseStrength = 0.8;
-                        float noiseSpeed    = 1.0;
-                        float noiseTimeSpeed = 1.5;
-
+                        
                         vec3 nnp = np;
                         vec3 w = normalize(np - vec3(0.75, 1.5, 0.0));
                         vec3 u = vec3(0.0,0.0,1.0);
@@ -311,7 +337,7 @@ class SSRTGlass {
                         float colorNoiseX = noise(np * noiseSpeed + timeOffset * noiseTimeSpeed);
                         float colorNoiseY = noise(np * noiseSpeed + timeOffset * noiseTimeSpeed + vec3(15.3278, 125.19879, 0.0));
                         float colorNoiseZ = noise(np * noiseSpeed + timeOffset * noiseTimeSpeed + vec3(2.6008, 78.19879, 543.12993));
-
+                        
                         float targ = length(nnp * 0.8 * uExtinctionFX1.w - vec3(0.75, 1.5, 0.0));
                         float targAperture = 0.25;
 
@@ -337,21 +363,37 @@ class SSRTGlass {
                         if(uExtinctionFX1.y > 0.5) {
                             col2 = vec3(colorNoiseX, colorNoiseY, colorNoiseZ) * 0.85;
                         }
+
                         if(targ < 1.0) {
-                            transm *= exp(-step * col2 * uExtintionFactor);
-                        } else if (targ > 1.0 && targ < 1.0 + targAperture) {
+                            // transm *= exp(-step * col2 * uExtintionFactor);
+                            transm *= exp(-step * col2 * fc);
+
+                        // } else if (targ > 1.0 && targ < 1.0 + targAperture) {
+                        } else if (targ > 1.0 && targ < 1.0 + targAperture ) {
                             float t = (targ - 1.0) / targAperture;
                             // transm *= exp(-step * col1 * uExtintionFactor * t -step * col2 * uExtintionFactor * (1.0 - t));
-                            transm *= exp(-step * (col1 * t + col2 * (1.0 - t)) * uExtintionFactor);
+                            // transm *= exp(-step * (col1 * t + col2 * (1.0 - t)) * uExtintionFactor);
+                            transm *= exp(-step * (col1 * t + col2 * (1.0 - t)) * fc );
+                            // transm *= col2;
+
+                        } else if ( targ < (1.0 + targAperture) * 1.85 ) {
+                            transm *= exp( -step * col1 * fc );
+                            // transm *= exp(-step * col2 * fc);
+
                         } else {
-                            transm *= exp(-step * col1 * uExtintionFactor);
+                            // transm = (col1) * targAperture;
+                            // transm *= exp(-step * col1 * uExtintionFactor);
+                            // transm = exp(-step * col1 * fc);
+                            
                         }
                     }
-                    col = col * transm;
+
+                    // return col * uExtintionColor2 * transm;
+                    col *= transm;
 
                     return col;
                 }
-
+                // getRefractedColor function end
 
 
 
@@ -414,7 +456,7 @@ class SSRTGlass {
                         // getRefractedColor(normalize(refracted + vec3(0.0, 0.35, 0.0)), vWorldSpaceFragPos) * (1.0 - reflect_prob) * 0.333;
                     
 
-                    // col = getRefractedColor(refracted, vWorldSpaceFragPos) * (1.0 - reflect_prob);
+                    // col = getRefractedColor(refracted, vWorldSpaceFragPos, 10.0) * (1.0 - reflect_prob);
                     // vec3 col = getRefractedColor(refracted, vWorldSpaceFragPos);
                     // col = getSkyboxColor(reflected) * reflect_prob * 1.0;
 
@@ -426,12 +468,14 @@ class SSRTGlass {
                     col = acesFilm(col);
                     col = pow(col, vec3(1.0 / 2.2)); 
 
-
+                    
                     gl_FragColor = vec4(col, 1.0); 
                     // gl_FragColor = vec4(getSkyboxColor(viewDir), 1.0) * 0.5 + vec4(viewDir * 0.5 + 0.5, 1.0); 
                 }`,
-        });
 
+                
+        });
+        
         this.mesh = mesh.clone();
         this.camera = camera;
         this.renderer = renderer;
@@ -449,52 +493,56 @@ class SSRTGlass {
 
         new THREE.TextureLoader().load("assets/floor5lr.jpg", (texture) => {
             // texture.encoding = THREE.LinearEncoding;
-            
+
+            const mat =                 new THREE.ShaderMaterial({
+                uniforms: {
+                    uTexture:           { type: "t", value: null },
+                },
+                
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);    
+                        vUv = uv;
+                    }`,
+    
+                fragmentShader: `
+                    varying vec2 vUv;
+                    uniform sampler2D uTexture;
+
+                    float smoothstep(float t) {
+                        return t * t * (3.0 - 2.0 * t);
+                    }
+
+                    void main() {
+                        vec4 col = texture2D(uTexture, vUv * 1.0 + (1.0 - 1.0) * 0.5);
+                        // col.rgb *= vec3(1.3, 1.15, 1.0) * 1.2;
+                        col.rgb *= vec3(0.97, 0.95, 0.9) * 1.2;
+                        
+                        float alpha = 1.0;
+                        float d = length(vUv - vec2(0.5));
+                        if(d > 0.35) {
+                            alpha = 1.0 - smoothstep( clamp( (d - 0.35) / 0.15, 0.0, 1.0) );
+                        }
+
+                        gl_FragColor = vec4(col.rgb, alpha);  
+                    }`,
+                
+                transparent: true,
+            })
+            const mat2 = new THREE.MeshBasicMaterial({
+                map: texture
+            })
             let planeMesh = new THREE.Mesh(
                 // new THREE.PlaneBufferGeometry(60, 60), // original size
                 // new THREE.PlaneBufferGeometry(60 * 0.35, 60 * 0.35),
-                new THREE.PlaneBufferGeometry(20, 20),
-                new THREE.ShaderMaterial({
-                    uniforms: {
-                        uTexture:           { type: "t", value: null },
-                    },
-                    
-                    vertexShader: `
-                        varying vec2 vUv;
-                        void main() {
-                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);    
-                            vUv = uv;
-                        }`,
-        
-                    fragmentShader: `
-                        varying vec2 vUv;
-                        uniform sampler2D uTexture;
-
-                        float smoothstep(float t) {
-                            return t * t * (3.0 - 2.0 * t);
-                        }
-
-                        void main() {
-                            vec4 col = texture2D(uTexture, vUv * 1.0 + (1.0 - 1.0) * 0.5);
-                            // col.rgb *= vec3(1.3, 1.15, 1.0) * 1.2;
-                            col.rgb *= vec3(0.97, 0.95, 0.9) * 1.2;
-                            
-                            float alpha = 1.0;
-                            float d = length(vUv - vec2(0.5));
-                            if(d > 0.35) {
-                                alpha = 1.0 - smoothstep( clamp( (d - 0.35) / 0.15, 0.0, 1.0) );
-                            }
-
-                            gl_FragColor = vec4(col.rgb, alpha);  
-                        }`,
-                    
-                    transparent: true,
-                })
+                new THREE.PlaneGeometry(20, 20),
+                mat2
             );
 
             planeMesh.rotation.x = -Math.PI * 0.5;
             planeMesh.rotation.z = -Math.PI * 1.0;
-            planeMesh.material.uniforms.uTexture.value = texture;
+            // planeMesh.material.uniforms.uTexture.value = texture;
             this.scene.add(planeMesh);
         });
     }

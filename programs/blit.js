@@ -1,4 +1,4 @@
-import * as THREE from "../node_modules/three/build/three.module.js";
+// import * as THREE from "../node_modules/three/build/three.module.js";
 
 class Blit {
     constructor(renderer, customFragment) {
@@ -29,7 +29,7 @@ class Blit {
             depthWrite: false,
         });
 
-        this.mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2,2), this.material);
+        this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2,2), this.material);
         this.camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1000 );
         this.renderer = renderer;
 

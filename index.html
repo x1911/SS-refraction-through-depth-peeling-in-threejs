@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
 
     <style>
-        html, body {
-            width:  100%;
+        html,
+        body {
+            width: 100%;
             height: 100%;
 
             margin: 0;
@@ -15,7 +17,25 @@
         }
     </style>
 </head>
+
 <body>
-    <script src="main.js" type="module"></script>
+    <!-- <script src="main.js" type="module"></script> -->
+    <script type="module">
+        async function start() {
+
+            window.port = 2001
+            const ll = await import('./Three.min.js')
+
+            window.THREE = ll.default
+
+            const v = '?' + (new Date().getTime())
+            await import('./main.js' + v)
+
+        }
+
+
+        window.onload = start
+    </script>
 </body>
+
 </html>
